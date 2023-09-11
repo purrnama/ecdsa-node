@@ -1,6 +1,3 @@
-import { secp256k1 } from "ethereum-cryptography/secp256k1";
-import { toHex } from "ethereum-cryptography/utils";
-import { keccak256 } from "ethereum-cryptography/keccak";
 import server from "./server";
 
 function Wallet({
@@ -12,18 +9,15 @@ function Wallet({
   setPrivateKey,
 }) {
   async function onChange(evt) {
-    const privateKey = evt.target.value;
-    setPrivateKey(privateKey);
-    const address =
-      "0x" +
-      toHex(keccak256(secp256k1.getPublicKey(privateKey)).slice(1).slice(-20));
-    setAddress(address);
-    if (address) {
+    const signature = evt.target.value;
+    if (signature) {
       const {
-        data: { balance },
-      } = await server.get(`balance/${address}`);
+        data: { address, balance },
+      } = await server.get(`balance/${signature.toString()}`);
+      setAddress(address);
       setBalance(balance);
     } else {
+      setAddress("");
       setBalance(0);
     }
   }
@@ -33,9 +27,9 @@ function Wallet({
       <h1>Your Wallet</h1>
 
       <label>
-        Private Key
+        Connect wallet
         <input
-          placeholder="Type in a private key"
+          placeholder="Enter a signature generated from your private key to connect"
           value={privateKey}
           onChange={onChange}
         ></input>
