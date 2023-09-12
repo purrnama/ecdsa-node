@@ -12,6 +12,18 @@ Continuing from the video, I've formatted the public addresses to follow the Eth
 
 `generate.js` in server will output a connect signature that will be used to find the public key when interacting with the client. For simplicity sake, the recovery bit is concatenated with the hex signature. The server will then slice them back, convert the hex signature back into Uint8Array and run the `recoverPublicKey` function to find the respective public address.
 
+#### Sign transaction hash to execute transaction
+
+In the same directory as `generate.js`, I've written another script called `signTx.js` that accepts a message hash and a private key as arguments. The script will return a signature in hex format.
+
+Example: `node scripts/signTx.js c5a3a0b0c49dc1006b2598fea3df5e6b94959d21235d4599194bd06f49378d39 50c4b3abc520687ccb051e094f17f396d0ef2fcc16c07970dacfaec1cdf6bd18`
+
+After connecting your wallet and inputting the amount and recipient, a message hash is generated for that particular transaction. In order to execute the transaction, the owner of the wallet must sign the message hash using their private key and input the signature.
+
+#### Incorporate time-based validity for signature
+
+TODO. Simply put, the message hash should only be valid during a limited time frame to prevent someone from replaying the transaction using the same valid signature again.
+
 ### ECDSA Node continued
 
 This project is an example of using a client and server to facilitate transfers between different addresses. Since there is just a single server on the back-end handling transfers, this is clearly very centralized. We won't worry about distributed consensus for this project.
