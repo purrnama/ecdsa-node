@@ -1,13 +1,6 @@
 import server from "./server";
 
-function Wallet({
-  address,
-  setAddress,
-  balance,
-  setBalance,
-  privateKey,
-  setPrivateKey,
-}) {
+function Wallet({ address, setAddress, balance, setBalance, signature }) {
   async function onChange(evt) {
     const signature = evt.target.value;
     if (signature) {
@@ -30,7 +23,7 @@ function Wallet({
         Connect wallet
         <input
           placeholder="Enter a signature generated from your private key to connect"
-          value={privateKey}
+          value={signature}
           onChange={onChange}
         ></input>
       </label>

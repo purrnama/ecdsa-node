@@ -10,26 +10,38 @@ const { Buffer } = require("node:buffer");
 app.use(cors());
 app.use(express.json());
 
-//sample signatures for the respective public addresses in balances.
+//sample signatures for the respective public addresses in balances object.
 // you can generate new signatures in generate.js
 const connectSignatures = [
-  "ae741feecc3640fe3c90964c68fad392aa7573054878607e3525b0eef4ce27df0ee53dbbff07a11111f1ce899ee63f4d2d926d15e4bb5da99b3f4f89efa008611",
-  "aad717f0d5344eb5162707d0ee7c67503b48e45e76367aef66bfd84da6b750db787290abd0897503f79d00329ffd341cee34e3b3788ba7d566d6d756aee575760",
-  "945846ddedff74814edf37c5ada17fb74a92925bc0155ce5b62dd3455f5c3fc96e4c8369f159ffa2d70e751db57071c8d57f1a134ebc2385b4e2ab99e2be4d280",
+  "5dcd141bb4d46bdbe26616719c189e48af7558319ad4bbef68e15f2f404105a71b24e491228594dea63762ab9f583fc4fddab80ff132af91b89c1b83b21a82f81",
+  "4dc40bffeb9524b09070f20a61228899930a93673195c57d9c16bafffdf116ea1af9dba02916bd27353561e60908bcea12461d40ac93e52ee23a80c9490c26b71",
+  "e8cb4e6a79f3aef32b7d2ef3e3d90f2ba4ccbef9b5d2d0e422b8498b7fae19de2744307bed4b2c3fc0448c0e1b1617acca7c22a10b481eda99b3a16514bbb5f81",
+];
+
+//sample private keys
+const privateKeys = [
+  "00cb13699ceaa4b99fd428c63f7bc55b9ee51318da43aacc773b6134828d1107",
+  "cfb5a50fe17f30dd97a635c2121dbfcc4bceef59854d3d0db8587af5e933ec86",
+  "50c4b3abc520687ccb051e094f17f396d0ef2fcc16c07970dacfaec1cdf6bd18",
 ];
 
 const balances = {
-  "0xce199b9b82f9adba3f6eefd92ecd7541f3a677df": 100,
-  "0x9c195a017eea6e78c881272ba4c6539c26fd3a12": 50,
-  "0xaa8c14d5660c12c488a65c59aba70ede3931483b": 75,
+  "0x0cd2c172b606f539bbe8d7b750ee362227dc067a": 100,
+  "0x8761f89031a7a9174fe40577b26327e7c0f9e581": 50,
+  "0x2c35d4c850a2e13c599971938dd4d2ba4f4245c2": 75,
 };
+
+app.get("/txhash/:message", (req, res) => {
+  const { message } = req.params;
+  console.log(message);
+  const messageHash = toHex(keccak256(utf8ToBytes(message)));
+  res.send({ messageHash });
+});
 
 app.get("/balance/:signature", (req, res) => {
   const { signature } = req.params;
   const sig = new Uint8Array(Buffer.from(signature.slice(0, -1), "hex"));
   const recoveryBit = signature.slice(-1);
-  console.log(sig);
-  console.log(recoveryBit);
   const publicKey = secp.recoverPublicKey(
     keccak256(utf8ToBytes("connect")),
     sig,
@@ -41,8 +53,30 @@ app.get("/balance/:signature", (req, res) => {
 });
 
 app.post("/send", (req, res) => {
-  const { sender, recipient, amount } = req.body;
+  const { sender, recipient, amount, signature } = req.body;
+  const sig = new Uint8Array(Buffer.from(signature.slice(0, -1), "hex"));
+  const recoveryBit = signature.slice(-1);
+  const messageHash = keccak256(
+    utf8ToBytes(sender + "_sends_" + amount + "_to_" + recipient)
+  );
+  const publicKey = secp.recoverPublicKey(
+    messageHash,
+    sig,
+    Number(recoveryBit)
+  );
+  const verifyHash = secp.verify(sig, messageHash, publicKey);
+  const address = "0x" + toHex(keccak256(publicKey).slice(-20));
 
+  if (!verifyHash) {
+    res.status(400).send({ message: "Hash not verified!" });
+    return;
+  }
+  if (address !== sender.toString()) {
+    res.status(400).send({ message: "address recovered not equal to sender!" });
+    console.log("address:", address);
+    console.log("sender:", sender.toString());
+    return;
+  }
   setInitialBalance(sender);
   setInitialBalance(recipient);
 

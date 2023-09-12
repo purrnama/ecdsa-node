@@ -20,5 +20,5 @@ const connectHash = keccak256(utf8ToBytes("connect"));
 })();
 
 //generate ethereum style public address
-const publicKey = keccak256(secp.getPublicKey(privateKey)).slice(1).slice(-20);
+const publicKey = keccak256(secp.getPublicKey(privateKey)).slice(-20);
 console.log("public key: " + "0x" + toHex(publicKey));
