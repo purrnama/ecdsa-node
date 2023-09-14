@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import server from "./server";
+import { utf8ToBytes, toHex } from "ethereum-cryptography/utils";
+import { keccak256 } from "ethereum-cryptography/keccak";
 function Transfer({ address, setBalance }) {
   const [sendAmount, setSendAmount] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -10,24 +12,43 @@ function Transfer({ address, setBalance }) {
     setter(evt.target.value);
   };
 
-  useEffect(() => {
-    async function getData() {
-      if (address && sendAmount && recipient) {
-        const message = address + "_sends_" + sendAmount + "_to_" + recipient;
-        const {
-          data: { messageHash },
-        } = await server.get(`txhash/${message.toString()}`);
-        setTxHash(messageHash);
-      } else {
-        setTxHash("");
-      }
+  function getTimestamp() {
+    return Math.floor(Date.now() / 1000);
+  }
+
+  async function getTxHash() {
+    if (address && sendAmount && recipient) {
+      const timestamp = getTimestamp();
+      const message =
+        address +
+        "_sends_" +
+        sendAmount +
+        "_to_" +
+        recipient +
+        "_at_" +
+        timestamp;
+      const {
+        data: { messageHash },
+      } = await server.get(`txhash/${message.toString()}`);
+      setTxHash(messageHash);
+    } else {
+      setTxHash("");
     }
-    getData();
+  }
+
+  function onClickRefreshHash() {
+    getTxHash();
+  }
+
+  useEffect(() => {
+    getTxHash();
   }, [address, sendAmount, recipient]);
 
   async function transfer(evt) {
     evt.preventDefault();
-
+    const timestamp = getTimestamp();
+    console.log("timestamp:", timestamp);
+    const timedSignature = toHex(keccak256(utf8ToBytes(signature + timestamp)));
     try {
       const {
         data: { balance },
@@ -65,6 +86,9 @@ function Transfer({ address, setBalance }) {
         ></input>
       </label>
       <div>
+        <button type="button" onClick={onClickRefreshHash}>
+          Refresh Hash
+        </button>
         Transaction Hash:{" "}
         {Boolean(address && sendAmount && recipient) && txHash}
       </div>

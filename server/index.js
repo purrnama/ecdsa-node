@@ -5,6 +5,7 @@ const port = 3042;
 const secp = require("@noble/secp256k1");
 const { keccak256 } = require("ethereum-cryptography/keccak");
 const { toHex, utf8ToBytes } = require("ethereum-cryptography/utils");
+const { getRandomBytes } = require("ethereum-cryptography/random");
 const { Buffer } = require("node:buffer");
 
 app.use(cors());
@@ -31,10 +32,18 @@ const balances = {
   "0x2c35d4c850a2e13c599971938dd4d2ba4f4245c2": 75,
 };
 
+let lastHashTimestamp = 0;
+
+const expiredHashes = [];
+
+function getTimestamp() {
+  return Math.floor(Date.now() / 1000);
+}
+
 app.get("/txhash/:message", (req, res) => {
   const { message } = req.params;
-  console.log(message);
   const messageHash = toHex(keccak256(utf8ToBytes(message)));
+  lastHashTimestamp = getTimestamp();
   res.send({ messageHash });
 });
 
@@ -54,10 +63,27 @@ app.get("/balance/:signature", (req, res) => {
 
 app.post("/send", (req, res) => {
   const { sender, recipient, amount, signature } = req.body;
+  for (let i = 0; i < expiredHashes.length; i++) {
+    if (signature.toString() === expiredHashes[i].toString()) {
+      res.status(400).send({
+        message:
+          "Signature expired. Refresh the transaction hash and generate a new signature.",
+      });
+      return;
+    }
+  }
   const sig = new Uint8Array(Buffer.from(signature.slice(0, -1), "hex"));
   const recoveryBit = signature.slice(-1);
   const messageHash = keccak256(
-    utf8ToBytes(sender + "_sends_" + amount + "_to_" + recipient)
+    utf8ToBytes(
+      sender +
+        "_sends_" +
+        amount +
+        "_to_" +
+        recipient +
+        "_at_" +
+        lastHashTimestamp
+    )
   );
   const publicKey = secp.recoverPublicKey(
     messageHash,
@@ -72,9 +98,7 @@ app.post("/send", (req, res) => {
     return;
   }
   if (address !== sender.toString()) {
-    res.status(400).send({ message: "address recovered not equal to sender!" });
-    console.log("address:", address);
-    console.log("sender:", sender.toString());
+    res.status(400).send({ message: "Address recovered not equal to sender!" });
     return;
   }
   setInitialBalance(sender);
@@ -83,6 +107,7 @@ app.post("/send", (req, res) => {
   if (balances[sender] < amount) {
     res.status(400).send({ message: "Not enough funds!" });
   } else {
+    expiredHashes.push(signature);
     balances[sender] -= amount;
     balances[recipient] += amount;
     res.send({ balance: balances[sender] });

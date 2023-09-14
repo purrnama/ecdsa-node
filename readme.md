@@ -22,7 +22,7 @@ After connecting your wallet and inputting the amount and recipient, a message h
 
 #### Incorporate time-based validity for signature
 
-TODO. Simply put, the message hash should only be valid during a limited time frame to prevent someone from replaying the transaction using the same valid signature again.
+The generated message hash for the transaction is appended with a timestamp so it produces a unique hash every time. Client and server keeps track of the last time a hash is produced. The user signs the hash with their private key and the server verifies the signature by reproducing and comparing the message with the timestamp. If the verification is successful, the transaction is executed and the signature is stored in an array of expired signatures. Therefore, the user or an adversary cannot use the same signature again and must generate a new hash with a new timestamp.
 
 ### ECDSA Node continued
 
